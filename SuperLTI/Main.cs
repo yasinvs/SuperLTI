@@ -3,7 +3,6 @@ using System.Management.Automation;
 using System.Windows.Forms;
 using System.IO;
 using System.Threading.Tasks;
-using System.IO.Compression;
 using System.Drawing;
 using System.Reflection;
 using System.Diagnostics;
@@ -20,6 +19,7 @@ namespace SuperLTI
         private string ProgressIntervalDetails = " ";
         private string ProgressIntervalTitle = "SuperLTI";
         private string[] Arguments = new string[0];
+        private string FolderPath = @"C:\Windows\Temp\SuperLTI\SuperLTI_{GUID}";
         private string ZipPath = string.Empty;
         private readonly Runspace rs = RunspaceFactory.CreateRunspace();
         private readonly Timer ProgressInterval = new Timer();
@@ -29,6 +29,14 @@ namespace SuperLTI
         private readonly string WindowGUID = Guid.NewGuid().ToString();
         private readonly IntPtr dialog = IntPtr.Zero;
         private readonly Icon dialogIcon = new Icon(Properties.Resources.icon, 16, 16);
+        private string GuidGenerate()
+        {
+            string guid;
+            var b = Guid.NewGuid().ToByteArray();
+            b[3] |= 0xF0;
+            guid = Convert.ToString(new Guid(b));
+            return guid.Substring(0, 7);
+        }
         public Main(string[] args)
         {
             Arguments = args;
@@ -64,6 +72,11 @@ namespace SuperLTI
         }
         private async void ProgressDialogHost_Load(object sender, EventArgs e)
         {
+            //if (!Directory.Exists(@"C:\Windows\Temp\SuperLTI"))
+            //{
+            //    Directory.CreateDirectory(@"C:\Windows\Temp\SuperLTI");
+            //}
+            FolderPath = FolderPath.Replace("{GUID}", GuidGenerate());
             await ReadArguments();
             if (!IgnoreProgressUI)
             {
@@ -96,7 +109,8 @@ namespace SuperLTI
                     ps.AddParameter("Value", Arguments[count]);
                 }
             }
-            ps.AddScript(Properties.Resources.SuperLTI);
+            string resourceReplace = Properties.Resources.SuperLTI.Replace("{FOLDERPATH}", FolderPath);
+            ps.AddScript(resourceReplace);
             await Task.Run(() => {
                 ps.Invoke();
                 Application.Exit();
@@ -155,11 +169,25 @@ namespace SuperLTI
             // SuperLTI.zip
             string zipName = string.Empty;
             // If the user gave us something with an extension make sure it's valid
-            if (Path.HasExtension(packageName) && !Path.GetExtension(packageName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+
+            // Determine if the user gave us a name or a full zip name
+            if (packageName.EndsWith(".zip"))
             {
                 Logger.WriteEventLog($"/SuperLTIPackage was given {packageName}, which is not a zip file. Attempting to match anyway", EventLogEntryType.Warning);
                 packageName = Path.GetFileNameWithoutExtension(packageName);
             }
+            else
+            {
+                zipName = $"{packageName}.zip";
+                if (File.Exists(zipName)) { return zipName; }
+            }
+
+            //if (Path.HasExtension(packageName) && !Path.GetExtension(packageName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+            //{
+            //    Logger.WriteEventLog($"/SuperLTIPackage was given {packageName}, which is not a zip file. Attempting to match anyway", EventLogEntryType.Warning);
+            //    packageName = Path.GetFileNameWithoutExtension(packageName);
+            //}
+
             // Determine if the user gave us a name or a full zip name
             if (Path.HasExtension(packageName))
             {
@@ -170,26 +198,42 @@ namespace SuperLTI
                 zipName = $"{packageName}.zip";
                 if (File.Exists(zipName)) { return zipName; }
             }
-            // Just a name, look for a folder
-            if (Directory.Exists(packageName))
+
+            List<string> folders = new List<string>()
             {
-                DirectoryInfo directoryInfo = new DirectoryInfo(packageName);
-                FileInfo[] fileInfo = directoryInfo.GetFiles();
-                if (Array.FindIndex(fileInfo, file => file.Name.Equals(zipName, StringComparison.OrdinalIgnoreCase)) > -1)
+                packageName,
+                "superlti",
+                "zip"
+            };
+
+            foreach (var folder in folders)
+            {
+                // Just a name, look for a folder
+                if (Directory.Exists(folder))
                 {
-                    // packagename/packagename.zip
-                    return Array.Find(fileInfo, file => file.Name.Equals(zipName, StringComparison.OrdinalIgnoreCase)).FullName;
-                }
-                else if (Array.FindIndex(fileInfo, file => file.Name.Equals("SuperLTI.zip", StringComparison.OrdinalIgnoreCase)) > -1)
-                {
-                    // packagename/superlti.zip
-                    return Array.Find(fileInfo, file => file.Name.Equals("SuperLTI.zip", StringComparison.OrdinalIgnoreCase)).FullName;
+                    DirectoryInfo directoryInfo = new DirectoryInfo(folder);
+                    FileInfo[] fileInfo = directoryInfo.GetFiles();
+                    if (Array.FindIndex(fileInfo, file => file.Name.Equals(zipName, StringComparison.OrdinalIgnoreCase)) > -1)
+                    {
+                        // packagename/packagename.zip
+                        return Array.Find(fileInfo, file => file.Name.Equals(zipName, StringComparison.OrdinalIgnoreCase)).FullName;
+                    }
+                    else if (Array.FindIndex(fileInfo, file => file.Name.Equals("SuperLTI.zip", StringComparison.OrdinalIgnoreCase)) > -1)
+                    {
+                        // packagename/superlti.zip
+                        return Array.Find(fileInfo, file => file.Name.Equals("SuperLTI.zip", StringComparison.OrdinalIgnoreCase)).FullName;
+                    }
                 }
             }
+
             // SuperLTI.zip
             if (File.Exists("SuperLTI.zip"))
             {
                 return "SuperLTI.zip";
+            }
+            else if (File.Exists($"{packageName}.zip")) // packageName.zip
+            {
+                return $"{packageName}.zip";
             }
             else
             {
@@ -218,17 +262,18 @@ namespace SuperLTI
         {
             return Task.Run(() =>
             {
-                Directory.CreateDirectory(@"C:\SuperLTI");
-                FileInfo zip = new FileInfo(ZipPath);
-                long totalBytes = zip.Length;
-                ProgressIntervalTitle = "Copying files...";
-                Copy.CopyTo(zip, new FileInfo(@"C:\SuperLTI\SuperLTI.zip"), new Action<int>((int progress) => {
-                    double copied = ((double)totalBytes * ((double)progress / 100));
-                    ProgressIntervalDetails = copied.ByteHumanize() + " / " + totalBytes.ByteHumanize();
-                    ProgressIntervalPercent = progress;
-                }));
+                Directory.CreateDirectory(FolderPath);
+                //FileInfo zip = new FileInfo(ZipPath);
+                //long totalBytes = zip.Length;
+                //ProgressIntervalTitle = "Copying files...";
+                //Copy.CopyTo(zip, new FileInfo(@"C:\ProgramData\SuperLTI\SuperLTI.zip"), new Action<int>((int progress) => {
+                //    double copied = ((double)totalBytes * ((double)progress / 100));
+                //    ProgressIntervalDetails = copied.ByteHumanize() + " / " + totalBytes.ByteHumanize();
+                //    ProgressIntervalPercent = progress;
+                //}));
                 ProgressIntervalTitle = "Expanding files...";
-                MyZipFileExtensions.ExtractToDirectory(ZipFile.Open(@"C:\SuperLTI\SuperLTI.zip", ZipArchiveMode.Read), @"C:\SuperLTI", ZipProgress);
+                //MyZipFileExtensions.ExtractToDirectory(ZipFile.Open(ZipPath, ZipArchiveMode.Read), @"C:\ProgramData\SuperLTI", ZipProgress);
+                MyZipFileExtensions.ExtractToDirectory(new Ionic.Zip.ZipFile(ZipPath), FolderPath, ZipProgress);
             });
         }
         private void Progress_DataAdded(object sender, DataAddedEventArgs e)

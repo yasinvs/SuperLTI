@@ -19,7 +19,7 @@ namespace SuperLTI.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -69,17 +69,17 @@ namespace SuperLTI.Properties {
                 return ((System.Drawing.Icon)(obj));
             }
         }
-        
+
         /// <summary>
-        ///   Looks up a localized string similar to New-EventLog -LogName &quot;Application&quot; -Source &quot;SuperLTI&quot;
-        ///Start-Transcript -Path &quot;C:\SuperLTI\SuperLTI.log&quot;
-        ///$cppslt = &quot;Preparing...&quot;
-        ///Write-Progress -Activity $cppslt -Status &quot;Saving ExecutionPolicy...&quot; -PercentComplete 0
+        ///   Looks up a localized string similar to $env:SuperLTI = $true
+        ///$SuperLTI.WindowTitle = &quot;SuperLTI&quot;
+        ///New-EventLog -LogName &quot;Application&quot; -Source &quot;SuperLTI&quot;
+        ///Start-Transcript -Path &quot;C:\ProgramData\SuperLTI\SuperLTI.log&quot;
+        ///Write-Progress -Activity &quot;Preparing...&quot; -Status &quot;Saving ExecutionPolicy...&quot; -PercentComplete 0
         ///$cppsxp = Get-ExecutionPolicy
-        ///Write-Progress -Activity $cppslt -Status &quot;Setting ExecutionPolicy...&quot; -PercentComplete 3
+        ///Write-Progress -Activity &quot;Preparing...&quot; -Status &quot;Setting ExecutionPolicy...&quot; -PercentComplete 3
         ///Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
-        ///Write-Progress -Activity $cppslt -Status &quot;Running SuperLTI Script...&quot; -PercentComplete 50
-        ///Set-Location -Path &quot;C:\Sup [rest of string was truncated]&quot;;.
+        ///Write-Progress -Activity &quot;Running...&quot; -Status &quot;Running SuperLTI Script [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string SuperLTI {
             get {
